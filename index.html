@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chart Generator</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+  :root {
+    --bg: #0f1724;
+    --card: #0b1220;
+    --muted: #9aa6b2;
+    --accent: #06b6d4;
+    --glass: rgba(255, 255, 255, 0.04);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, "Helvetica Neue", Arial;
+    margin: 0;
+    background: linear-gradient(180deg, #071029 0%, #0f1724 100%);
+    color: #e6eef6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .app {
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 20px;
+    flex: 1;
+  }
+
+  .card {
+    background: linear-gradient(180deg, var(--card), #071226);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 6px 24px rgba(2, 6, 23, 0.6);
+  }
+
+  h1 {
+    font-size: 20px;
+    margin: 0 0 8px;
+  }
+
+  p.lead {
+    color: var(--muted);
+    margin: 0 0 18px;
+    font-size: 13px;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  label {
+    font-size: 12px;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  select,
+  input[type="text"],
+  textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: var(--glass);
+    color: inherit;
+    font-size: 14px;
+  }
+
+  textarea {
+    min-height: 92px;
+    resize: vertical;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .row .flex {
+    flex: 1;
+  }
+
+  button {
+    background: linear-gradient(90deg, var(--accent), #7c3aed);
+    border: none;
+    color: white;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  button.ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .small {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .muted {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* canvas area */
+  .canvas-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .legend {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+  }
+
+  .canvas-card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 420px;
+    border-radius: 6px;
+    background: transparent;
+  }
+
+  /* tooltip */
+  .tooltip {
+    position: absolute;
+    padding: 8px 10px;
+    background: #061022;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+    font-size: 13px;
+    color: #d7eef8;
+    transform: translate(-50%, -120%);
+    white-space: nowrap;
+  }
+
+  footer {
+    background: linear-gradient(90deg, #0b1220, #071029);
+    text-align: center;
+    padding: 16px 0;
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  /* responsive */
+  @media (max-width: 980px) {
+    .app {
+      grid-template-columns: 1fr;
+    }
+
+    .canvas-card canvas {
+      height: 320px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="card">
+      <h1>Chart Generator</h1>
+      <p class="lead">Create Bar / Line / Pie charts from simple CSV-style input. No backend. Export PNG. Uses HTML5 Canvas.</p>
+
+      <div class="controls">
+        <div>
+          <label for="chartType">Chart type</label>
+          <select id="chartType">
+            <option value="bar">Bar Chart</option>
+            <option value="line">Line Chart</option>
+            <option value="pie">Pie Chart</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="labels">Labels (comma-separated)</label>
+          <input id="labels" type="text" placeholder="Jan,Feb,Mar,Apr" value="Jan,Feb,Mar,Apr,May" />
+        </div>
+
+        <div>
+          <label for="values">Values (comma-separated)</label>
+          <input id="values" type="text" placeholder="10,20,30,40" value="65,59,80,81,56" />
+        </div>
+
+        <div class="row">
+          <div class="flex">
+            <label for="colors">Base color (for series / slices)</label>
+            <input id="baseColor" type="color" value="#06b6d4" />
+          </div>
+          <div style="width:110px">
+            <label>&nbsp;</label>
+            <button id="randomize" class="small ghost">Randomize</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="flex">
+            <label>&nbsp;</label>
+            <button id="render" class="small">Render Chart</button>
+          </div>
+          <div style="width:110px">
+            <label>&nbsp;</label>
+            <button id="download" class="small ghost">Download PNG</button>
+          </div>
+        </div>
+
+        <div>
+          <label for="presets">Presets (saved in localStorage)</label>
+          <div class="row">
+            <select id="presets" style="flex:1">
+              <option value="">— Select preset —</option>
+            </select>
+            <button id="savePreset" class="small ghost">Save</button>
+            <button id="deletePreset" class="small ghost">Del</button>
+          </div>
+        </div>
+
+        <p class="muted">Input formats accepted: comma-separated numbers. Labels and values must match in length. For line & bar charts values can be decimal numbers.</p>
+      </div>
+    </aside>
+
+    <main class="card canvas-card">
+      <div class="toolbar">
+        <div class="meta">
+          <strong id="title">Bar Chart</strong>
+          <span class="muted" style="margin-left:8px" id="subtitle">(interactive, frontend-only)</span>
+        </div>
+        <div>
+          <span class="muted">Preview</span>
+        </div>
+      </div>
+
+      <div style="position:relative;margin-top:12px">
+        <div class="canvas-wrap">
+          <div class="legend" id="legend"></div>
+          <canvas id="chartCanvas" width="800" height="420" aria-label="Chart preview"></canvas>
+        </div>
+        <div id="tooltip" class="tooltip" style="display:none"></div>
+      </div>
+
+    </main>
+  </div>
+
+  <footer>
+    &copy; 2025 Chart Generator. All rights reserved.
+  </footer>
+
+    <script>
+    /* Chart Generator — vanilla JS (no libraries)
+       Features:
+       - Bar, Line, Pie charts
+       - CSV-style input for labels & values
+       - Responsive canvas with devicePixelRatio handling
+       - Hover tooltip
+       - Export to PNG
+       - Presets saved in localStorage
+    */
+
+    const el = (id) => document.getElementById(id);
+    const chartTypeEl = el('chartType');
+    const labelsEl = el('labels');
+    const valuesEl = el('values');
+    const baseColorEl = el('baseColor');
+    const renderBtn = el('render');
+    const randomizeBtn = el('randomize');
+    const downloadBtn = el('download');
+    const canvas = el('chartCanvas');
+    const ctx = canvas.getContext('2d');
+    const tooltip = el('tooltip');
+    const legend = el('legend');
+    const title = el('title');
+    const presetsSelect = el('presets');
+    const savePresetBtn = el('savePreset');
+    const deletePresetBtn = el('deletePreset');
+
+    // state
+    let state = {
+      type: chartTypeEl.value,
+      labels: [],
+      values: [],
+      colors: [],
+      mouse: {x:0,y:0}
+    };
+
+    // Utilities
+    function parseCSV(str){
+      if(!str) return [];
+      return str.split(',').map(s=>s.trim()).filter(Boolean);
+    }
+
+    function randColor(){
+      // nice pastel-ish colors
+      const h = Math.floor(Math.random()*360);
+      const s = 60 + Math.floor(Math.random()*20);
+      const l = 50 + Math.floor(Math.random()*10);
+      return `hsl(${h} ${s}% ${l}%)`;
+    }
+
+    function generateColors(count, base){
+      if(!base) base = '#06b6d4';
+      const cols = [];
+      // convert hex to hue/lightness by drawing on canvas
+      for(let i=0;i<count;i++) cols.push(randColor());
+      return cols;
+    }
+
+    function resizeCanvas(){
+      const rect = canvas.getBoundingClientRect();
+      const DPR = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(rect.width * DPR);
+      canvas.height = Math.floor(rect.height * DPR);
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+    }
+
+    function clear(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
+
+    function draw(){
+      resizeCanvas();
+      clear();
+      if(!state.values.length) return;
+      if(state.type === 'bar') drawBar();
+      if(state.type === 'line') drawLine();
+      if(state.type === 'pie') drawPie();
+      renderLegend();
+    }
+
+    /* --- Drawing helpers --- */
+    function drawAxes(padding){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      // x axis
+      ctx.beginPath();
+      ctx.moveTo(padding.left, canvas.height/padding.dpr - padding.bottom);
+      ctx.lineTo(canvas.width/padding.dpr - padding.right, canvas.height/padding.dpr - padding.bottom);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawBar(){
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+      const padding = {left:50, right:30, top:30, bottom:50, dpr: (window.devicePixelRatio||1)};
+      drawAxes(padding);
+      const max = Math.max(...state.values.map(v=>Number(v)||0));
+      const min = Math.min(...state.values.map(v=>Number(v)||0));
+      const range = max - Math.min(0,min);
+      const count = state.values.length;
+      const availableW = w - padding.left - padding.right;
+      const barW = Math.min(60, availableW / (count*1.4));
+      const gap = (availableW - (barW*count)) / (count+1);
+
+      state._bars = [];
+
+      for(let i=0;i<count;i++){
+        const val = Number(state.values[i]) || 0;
+        const x = padding.left + gap + i*(barW+gap);
+        const norm = range ? (val / range) : 0;
+        const barH = norm * (h - padding.top - padding.bottom);
+        const y = h - padding.bottom - barH;
+
+        // shadow
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        ctx.fillRect(x+2, y+6, barW, barH);
+        ctx.restore();
+
+        // bar
+        const col = state.colors[i] || state.colors[0];
+        const gradient = ctx.createLinearGradient(0,y,0,y+barH);
+        gradient.addColorStop(0, col);
+        gradient.addColorStop(1, 'rgba(255,255,255,0.06)');
+        roundRect(ctx, x, y, barW, barH, 6, true, false, gradient);
+
+        // label
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.font = '12px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(state.labels[i] || ('#'+(i+1)), x + barW/2, h - padding.bottom + 18);
+
+        // store for hover
+        state._bars.push({x, y, w:barW, h:barH, value:val, label: state.labels[i]});
+      }
+    }
+
+    function drawLine(){
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+      const padding = {left:50, right:30, top:30, bottom:50, dpr:(window.devicePixelRatio||1)};
+      drawAxes(padding);
+      const max = Math.max(...state.values.map(v=>Number(v)||0));
+      const min = Math.min(...state.values.map(v=>Number(v)||0));
+      const range = max - Math.min(0,min);
+      const count = state.values.length;
+      const availableW = w - padding.left - padding.right;
+      const gap = availableW / (count-1);
+
+      state._points = [];
+
+      // compute points
+      for(let i=0;i<count;i++){
+        const val = Number(state.values[i]) || 0;
+        const x = padding.left + i * gap;
+        const norm = range ? (val / range) : 0;
+        const y = h - padding.bottom - norm * (h - padding.top - padding.bottom);
+        state._points.push({x,y,val,label: state.labels[i]});
+      }
+
+      // area gradient
+      const col = state.colors[0] || '#06b6d4';
+      const grad = ctx.createLinearGradient(0,padding.top,0,h-padding.bottom);
+      grad.addColorStop(0, col);
+      grad.addColorStop(1, 'rgba(255,255,255,0.03)');
+
+      // line
+      ctx.save();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = col;
+      ctx.beginPath();
+      state._points.forEach((p,i)=>{
+        if(i===0) ctx.moveTo(p.x,p.y); else ctx.lineTo(p.x,p.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+
+      // dots
+      ctx.fillStyle = col;
+      state._points.forEach(p=>{
+        ctx.beginPath(); ctx.arc(p.x,p.y,5,0,Math.PI*2); ctx.fill();
+      });
+
+      // labels
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '12px Inter, system-ui'; ctx.textAlign = 'center';
+      state._points.forEach((p,i)=>{
+        ctx.fillText(state.labels[i]||('#'+(i+1)), p.x, h - padding.bottom + 18);
+      });
+    }
+
+    function drawPie(){
+      const w = canvas.width / (window.devicePixelRatio || 1);
+      const h = canvas.height / (window.devicePixelRatio || 1);
+      const cx = w/2;
+      const cy = h/2 - 20;
+      const radius = Math.min(w,h) * 0.34;
+      const total = state.values.reduce((s,v)=>s + (Number(v)||0),0) || 1;
+
+      let start = -Math.PI/2;
+      state._slices = [];
+      for(let i=0;i<state.values.length;i++){
+        const val = Number(state.values[i]) || 0;
+        const angle = (val/total) * Math.PI*2;
+        const end = start + angle;
+
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.arc(cx,cy,radius,start,end);
+        ctx.closePath();
+        ctx.fillStyle = state.colors[i] || state.colors[0];
+        ctx.fill();
+
+        // store
+        state._slices.push({start, end, cx, cy, r: radius, value: val, label: state.labels[i]});
+
+        start = end;
+      }
+
+      // legend generated separately
+    }
+
+    // Rounded rect helper
+    function roundRect(ctx,x,y,w,h,r,fill,stroke,fillStyle){
+      if(typeof r === 'undefined') r = 5;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if(fill){ ctx.fillStyle = fillStyle || 'rgba(255,255,255,0.08)'; ctx.fill(); }
+      if(stroke){ ctx.stroke(); }
+    }
+
+    /* Legend render */
+    function renderLegend(){
+      legend.innerHTML = '';
+      for(let i=0;i<state.labels.length;i++){
+        const item = document.createElement('div'); item.className = 'legend-item';
+        const sw = document.createElement('span'); sw.className = 'legend-swatch'; sw.style.background = state.colors[i] || state.colors[0];
+        const txt = document.createElement('span'); txt.textContent = `${state.labels[i] || ('#'+(i+1))}: ${state.values[i]}`;
+        item.appendChild(sw); item.appendChild(txt);
+        legend.appendChild(item);
+      }
+    }
+
+    /* --- Interactivity: hover detection --- */
+    function handleMouseMove(e){
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left);
+      const y = (e.clientY - rect.top);
+      state.mouse.x = x; state.mouse.y = y;
+
+      if(state.type === 'bar'){
+        const found = state._bars && state._bars.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+        if(found){ showTooltip(e.clientX, e.clientY, found.label + ': ' + found.value); } else hideTooltip();
+      } else if(state.type === 'line'){
+        // find nearest point (within 10px)
+        const found = state._points && state._points.find(p => Math.hypot(p.x - x, p.y - y) < 10);
+        if(found){ showTooltip(e.clientX, e.clientY, found.label + ': ' + found.val); } else hideTooltip();
+      } else if(state.type === 'pie'){
+        const found = state._slices && state._slices.find(s => {
+          const dx = x - s.cx; const dy = y - s.cy; const d = Math.hypot(dx,dy);
+          if(d > s.r) return false;
+          let ang = Math.atan2(dy,dx);
+          if(ang < -Math.PI/2) ang += Math.PI*2; // normalize to slice coordinates
+          return ang >= s.start && ang <= s.end;
+        });
+        if(found) showTooltip(e.clientX, e.clientY, found.label + ': ' + found.value); else hideTooltip();
+      }
+    }
+
+    function showTooltip(clientX, clientY, text){
+      tooltip.style.left = clientX + 'px';
+      tooltip.style.top = clientY + 'px';
+      tooltip.style.display = 'block';
+      tooltip.textContent = text;
+    }
+    function hideTooltip(){ tooltip.style.display = 'none'; }
+
+    /* --- Export PNG --- */
+    function downloadPNG(){
+      // To get high-res, we can use current canvas; create temporary link
+      const link = document.createElement('a');
+      link.download = (state.type || 'chart') + '.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    /* --- Presets (localStorage) --- */
+    function loadPresets(){
+      const data = JSON.parse(localStorage.getItem('cg_presets')||'{}');
+      presetsSelect.innerHTML = '<option value="">— Select preset —</option>';
+      Object.keys(data).forEach(k=>{
+        const opt = document.createElement('option'); opt.value = k; opt.textContent = k;
+        presetsSelect.appendChild(opt);
+      });
+    }
+
+    function savePreset(){
+      const name = prompt('Preset name (short):'); if(!name) return;
+      const data = JSON.parse(localStorage.getItem('cg_presets')||'{}');
+      data[name] = {type:chartTypeEl.value, labels:labelsEl.value, values:valuesEl.value, color: baseColorEl.value};
+      localStorage.setItem('cg_presets', JSON.stringify(data));
+      loadPresets();
+    }
+
+    function deletePreset(){
+      const key = presetsSelect.value; if(!key) return alert('Choose a preset to delete');
+      const data = JSON.parse(localStorage.getItem('cg_presets')||'{}');
+      delete data[key]; localStorage.setItem('cg_presets', JSON.stringify(data)); loadPresets();
+    }
+
+    presetsSelect.addEventListener('change', ()=>{
+      const key = presetsSelect.value; if(!key) return;
+      const data = JSON.parse(localStorage.getItem('cg_presets')||'{}');
+      const p = data[key]; if(!p) return;
+      chartTypeEl.value = p.type; labelsEl.value = p.labels; valuesEl.value = p.values; baseColorEl.value = p.color;
+      updateStateFromInputs(); draw();
+    });
+
+    savePresetBtn.addEventListener('click', savePreset);
+    deletePresetBtn.addEventListener('click', deletePreset);
+
+    /* --- UI actions --- */
+    function updateStateFromInputs(){
+      state.type = chartTypeEl.value;
+      state.labels = parseCSV(labelsEl.value);
+      state.values = parseCSV(valuesEl.value).map(v=>isNaN(v)?0:parseFloat(v));
+      state.colors = generateColors(state.values.length, baseColorEl.value);
+      title.textContent = chartTypeEl.options[chartTypeEl.selectedIndex].text;
+    }
+
+    renderBtn.addEventListener('click', ()=>{ updateStateFromInputs(); draw(); });
+    chartTypeEl.addEventListener('change', ()=>{ updateStateFromInputs(); draw(); });
+    randomizeBtn.addEventListener('click', ()=>{ baseColorEl.value = '#'+Math.floor(Math.random()*16777215).toString(16); updateStateFromInputs(); draw(); });
+    downloadBtn.addEventListener('click', downloadPNG);
+
+    // hover
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseleave', hideTooltip);
+
+    // init
+    window.addEventListener('resize', ()=>{ draw(); });
+
+    // initial load
+    function init(){
+      loadPresets();
+      updateStateFromInputs();
+      draw();
+    }
+
+    init();
+  </script>
+</body>
+</html>
