@@ -52,11 +52,11 @@
 ---
 
 ## Screenshot
-favicon.png
+![Chart Example](favicon.png)
 
 ---
 
 ## License
 
 MIT License © 2025
-MIT LICENSE
+[MIT License](LICENSE).
